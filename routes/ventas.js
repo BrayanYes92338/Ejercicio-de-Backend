@@ -31,6 +31,11 @@ router.put("/desactivar/:id",[
     check("id").custom(helperventas.validarexitaventaID),
     validarCampos
 ], httpVentas.putVentasDesactivar)
+router.delete("/:id",[
+    check("id", "Se nesecita un mongoid valido").isMongoId(),
+    check("id").custom(helperventas.validarexitaventaID),
+    validarCampos
+], httpVentas.deleteVentas)
 
 
 export default router

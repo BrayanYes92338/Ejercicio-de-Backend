@@ -4,11 +4,11 @@ import Articulos from "../models/articulos.js"
 const httpVentas = {
 
     getVentas: async (req, res) => {
-        const { busqueda } = req.query;
-        const venta = await Ventas.findById({
-            $or: [{ numero: new RegExp(busqueda, "i") }],
+        const {busqueda} =req.query;
+        const cliente = await Ventas.find({
+            $or: [{numero: new RegExp(busqueda, "i")}]
         })
-        res.json({ venta });
+        res.json({cliente});
     },
     getVentasID: async (req, res) => {
         const { id } = req.params;
@@ -25,36 +25,57 @@ const httpVentas = {
     },
     postVentas: async (req, res) => {
         try {
-            const { idcliente, numero, createAT, estado, detalle, descuento, iva, subtotal, total } = req.body;
-            const venta = new Ventas({ idcliente, numero, createAT, estado, detalle, descuento, iva, subtotal, total });
-            await venta.save();
-            let acumulador = 0;
-            for (i = 0; i < detalle.length; i++) {
-                const articulo = await Articulos.findById(detalle[i].idarticulo)
-                const resultado = articulo.stock - detalle[i].cantidad
-                if (articulo.stock > 0) {
-                    const data = await Articulos.findByIdAndUpdate(detalle[i].idarticulo, { stock: resultado })
-                } else {
-                    return res.status(200).json({ message: `El articulo ${articulo.nombre} ya no tiene stock` })
-
-                }
-                const total = detalle[i].precio * detalle[i].cantidad
-                const descuento = total * 10 / 100
-                const iva = total * 11 / 100
-                const descuentoTotal = total - descuento
-                const totalFinal = descuentoTotal + iva
-                acumulador += totalFinal
-                const dataventa = await Ventas.findByIdAndUpdate(venta._id, {
-                    descuento: descuento,
-                    iva: iva,
-                    subtotal: descuentoTotal,
-                    total: acumulador
-                })
-
+            const { idcliente, numero, detalle, descuento, iva } = req.body;
+    
+            const ventaExistente = await Ventas.findOne({ numero });
+            if (ventaExistente) {
+                return res.status(400).json({ message: 'Ya existe una venta con este número' });
             }
+    
+            if (!detalle || detalle.length === 0) {
+                return res.status(400).json({ message: 'El detalle de la venta es requerido y debe contener al menos un artículo' });
+            }
+    
+            if (descuento === 0 || iva === 0 || !descuento || !iva) {
+                return res.status(400).json({ message: 'El descuento y el IVA son requeridos y no pueden ser cero' });
+            }
+    
+            let acumulador = 0;
+            let ivaTotal = 0;
+    
+            for (let i = 0; i < detalle.length; i++) {
+                const articulo = await Articulos.findById(detalle[i].idarticulo);
+                if (!articulo) {
+                    return res.status(400).json({ message: `El artículo con ID ${detalle[i].idarticulo} no existe` });
+                }
+    
+                if (articulo.stock < detalle[i].cantidad) {
+                    return res.status(400).json({ message: `El artículo ${articulo.nombre} no tiene suficiente stock` });
+                }
+    
+                const total = detalle[i].precio * detalle[i].cantidad;
+                const descuentoTotal = total * (descuento / 100);
+                ivaTotal += total * (iva / 100);
+                const totalFinal = total - descuentoTotal + (total * (iva / 100));
+                acumulador += totalFinal;
+            }
+    
+            if (acumulador === 0 || ivaTotal === 0) {
+                return res.status(400).json({ message: 'El subtotal y el IVA total no pueden ser cero' });
+            }
+    
+            const venta = new Ventas({ idcliente, numero, detalle, descuento, iva });
+            await venta.save();
+    
+            await Ventas.findByIdAndUpdate(venta._id, {
+                subtotal: acumulador - ivaTotal,
+                total: acumulador
+            });
+    
+            res.status(201).json({ message: 'Venta creada exitosamente' });
         } catch (error) {
-            res.status(400).json({ err: "No se pudo crear el articulo" })
-
+            console.error(error);
+            return res.status(500).json({ error: 'Ocurrió un error al procesar la solicitud' });
         }
     },
     putVentas: async (req, res)=>{
@@ -74,7 +95,11 @@ const httpVentas = {
         const venta = await Ventas.findByIdAndUpdate(id,{estado:0},{new:true});
         res.json({venta});
     },
-
+    deleteVentas: async (req, res)=>{
+        const {id}= req.params;
+        const resultado = await Ventas.findByIdAndDelete(id);
+        res.json({resultado});  
+    }
 
 };
 
