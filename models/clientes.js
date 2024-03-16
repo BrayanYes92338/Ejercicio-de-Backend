@@ -1,12 +1,11 @@
 import mongoose from "mongoose";
 
 const ClientesSchema = new mongoose.Schema({
-nombre:{type: String, require: true, minlength: 4},
-dirrecion: {type: String, require: true},
-correo:{type:String, require: true, unique: true},
-fecha:{type:Date, default:Date.now},
-estado: {type:Number,default:1}
-
+    nombre:{type:String,required:true,minlength:4},
+    createAt:{type:Date,default:Date.now},
+    correo:{type:String, required:true, unique:true},
+    direccion:{type:String, required:true},
+    estado:{type:Number, default:1},
 })
 
 

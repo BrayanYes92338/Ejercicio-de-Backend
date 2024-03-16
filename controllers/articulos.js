@@ -25,11 +25,11 @@ const httpArticulos = {
   },
   putArticulos: async (req, res) => {
     const { id } = req.params;
-    const { idcategoria, precio, stock,estado,createAt, ...resto } = req.body;
-    const articulo = await Articulo.findByIdAndUpdate(id, resto, {new: true});
-    res.json({ articulo }); 
-
-  }, putArticulosActivar: async (req, res) => {
+    const { idcategoria, precio, stock, estado, createAt, ...resto } = req.body;
+    const articulo = await Articulo.findByIdAndUpdate(id, { idcategoria, ...resto }, { new: true });
+    res.json({ articulo });
+  }
+  , putArticulosActivar: async (req, res) => {
     const { id } = req.params;
     const articulo = await Articulo.findByIdAndUpdate(
       id,
